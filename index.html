@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>משחק כרטיסי גירוד - משפחה</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#bbf7d0 1px, transparent 1px);
+            background-size: 20px 20px;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #166534;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-container {
+            position: relative;
+            width: 100%;
+            max-width: 220px;
+            height: 280px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            background: white;
+            border: 4px solid #fff;
+            transition: transform 0.3s ease;
+        }
+
+        .card-container:hover {
+            transform: translateY(-5px);
+        }
+
+        .hidden-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            border-radius: 12px;
+            z-index: 1;
+        }
+
+        .emoji-art {
+            font-size: 5rem;
+            line-height: 1;
+            margin-bottom: 10px;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.2));
+        }
+
+        .character-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #374151;
+            background: #fcd34d;
+            padding: 4px 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            cursor: crosshair;
+            border-radius: 12px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .card-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 30px;
+            }
+        }
+    </style>
+</head>
+<body class="py-10">
+
+    <div class="text-center mb-8 px-4">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4">מי מסתתר כאן? 🧐</h1>
+        <p class="text-lg text-green-800 font-semibold bg-green-100 inline-block px-6 py-2 rounded-full shadow-sm">
+            גרדו את הכרטיסים כדי לגלות את כל בני המשפחה!
+        </p>
+    </div>
+
+    <!-- The grid where cards will be injected -->
+    <div id="game-board" class="card-grid"></div>
+
+    <button id="reset-btn" class="mt-10 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-colors text-xl border-4 border-green-700">
+        התחל מחדש 🔄
+    </button>
+
+    <script>
+        const familyMembers = [
+            { id: 'dad', name: 'אבא', emoji: '👨', color: '#60a5fa' },
+            { id: 'mom', name: 'אמא', emoji: '👩', color: '#f472b6' },
+            { id: 'boy', name: 'ילד', emoji: '👦', color: '#34d399' },
+            { id: 'girl', name: 'ילדה', emoji: '👧', color: '#fbbf24' },
+            { id: 'grandpa', name: 'סבא', emoji: '👴', color: '#9ca3af' },
+            { id: 'grandma', name: 'סבתא', emoji: '👵', color: '#c084fc' }
+        ];
+
+        const gameBoard = document.getElementById('game-board');
+
+        // Function to setup the game
+        function initGame() {
+            gameBoard.innerHTML = ''; // Clear board
+            
+            // Shuffle the array so they appear in a random order
+            const shuffledMembers = [...familyMembers].sort(() => Math.random() - 0.5);
+
+            shuffledMembers.forEach((member) => {
+                // 1. Create wrapper
+                const cardWrap = document.createElement('div');
+                cardWrap.className = 'card-container';
+
+                // 2. Create the hidden content (underneath)
+                const hiddenContent = document.createElement('div');
+                hiddenContent.className = 'hidden-content';
+                hiddenContent.innerHTML = `
+                    <div class="emoji-art">${member.emoji}</div>
+                    <div class="character-name" style="color: ${member.color}; background: #fff; border: 2px solid ${member.color}">${member.name}</div>
+                `;
+
+                // 3. Create the canvas (the scratch layer)
+                const canvas = document.createElement('canvas');
+                // Set explicit dimensions matching the CSS
+                canvas.width = 220;
+                canvas.height = 280;
+                
+                cardWrap.appendChild(hiddenContent);
+                cardWrap.appendChild(canvas);
+                gameBoard.appendChild(cardWrap);
+
+                // 4. Initialize scratching logic for this canvas
+                setupCanvas(canvas, member.color);
+            });
+        }
+
+        function setupCanvas(canvas, accentColor) {
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+
+            // Fill canvas with a "scratch card" texture/color
+            // Draw background
+            ctx.fillStyle = '#cbd5e1'; // Slate gray base
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add a pattern or stripes to make it look like a scratch card
+            ctx.fillStyle = '#94a3b8';
+            for(let i = 0; i < canvas.width + canvas.height; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(0, i);
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#94a3b8';
+                ctx.stroke();
+            }
+
+            // Draw "גרד אותי!" text
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 28px Rubik, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Draw background pill for text
+            ctx.beginPath();
+            ctx.roundRect(canvas.width/2 - 70, canvas.height/2 - 30, 140, 60, 30);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fill();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText('גרד כאן!', canvas.width / 2, canvas.height / 2);
+
+            // Set up scratching brush
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 35; // Size of the "coin" scratching
+
+            // Function to get accurate mouse/touch coordinates
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+
+            // Scratching functions
+            function startDrawing(e) {
+                isDrawing = true;
+                const pos = getCoordinates(e);
+                ctx.globalCompositeOperation = 'destination-out'; // This makes drawn areas transparent
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                
+                // For a single tap/click dot
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            function scratch(e) {
+                if (!isDrawing) return;
+                e.preventDefault(); // Prevent scrolling while scratching on mobile
+                const pos = getCoordinates(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            function stopDrawing() {
+                isDrawing = false;
+            }
+
+            // Mouse Events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', scratch);
+            window.addEventListener('mouseup', stopDrawing);
+
+            // Touch Events (Mobile)
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', scratch, { passive: false });
+            window.addEventListener('touchend', stopDrawing);
+        }
+
+        // Initialize game on load
+        initGame();
+
+        // Reset button functionality
+        document.getElementById('reset-btn').addEventListener('click', initGame);
+
+    </script>
+</body>
+</html>
