@@ -58,11 +58,14 @@
             z-index: 1;
         }
 
-        .emoji-art {
-            font-size: 5rem;
-            line-height: 1;
-            margin-bottom: 10px;
-            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.2));
+        .character-img {
+            width: 160px;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: 2px solid #fff;
         }
 
         .character-name {
@@ -121,12 +124,12 @@
 
     <script>
         const familyMembers = [
-            { id: 'dad', name: 'אבא', emoji: '👨', color: '#60a5fa' },
-            { id: 'mom', name: 'אמא', emoji: '👩', color: '#f472b6' },
-            { id: 'boy', name: 'ילד', emoji: '👦', color: '#34d399' },
-            { id: 'girl', name: 'ילדה', emoji: '👧', color: '#fbbf24' },
-            { id: 'grandpa', name: 'סבא', emoji: '👴', color: '#9ca3af' },
-            { id: 'grandma', name: 'סבתא', emoji: '👵', color: '#c084fc' }
+            { id: 'dad', name: 'אבא', image: 'DAD.PNG', color: '#60a5fa' },
+            { id: 'mom', name: 'אמא', image: 'MOM.PNG', color: '#f472b6' },
+            { id: 'boy', name: 'אח', image: 'BRO.PNG', color: '#34d399' },
+            { id: 'girl', name: 'אחות', image: 'SIS.PNG', color: '#fbbf24' },
+            { id: 'grandpa', name: 'סבא', image: 'PAPA.PNG', color: '#9ca3af' },
+            { id: 'grandma', name: 'סבתא', image: 'NANA.PNG', color: '#c084fc' }
         ];
 
         const gameBoard = document.getElementById('game-board');
@@ -147,7 +150,7 @@
                 const hiddenContent = document.createElement('div');
                 hiddenContent.className = 'hidden-content';
                 hiddenContent.innerHTML = `
-                    <div class="emoji-art">${member.emoji}</div>
+                    <img src="${member.image}" alt="${member.name}" class="character-img" draggable="false">
                     <div class="character-name" style="color: ${member.color}; background: #fff; border: 2px solid ${member.color}">${member.name}</div>
                 `;
 
