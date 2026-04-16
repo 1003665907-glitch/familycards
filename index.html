@@ -110,9 +110,14 @@
 
     <div class="text-center mb-8 px-4">
         <h1 class="text-4xl md:text-5xl font-extrabold mb-4">מי מסתתר כאן? 🧐</h1>
-        <p class="text-lg text-green-800 font-semibold bg-green-100 inline-block px-6 py-2 rounded-full shadow-sm">
+        <p class="text-lg text-green-800 font-semibold bg-green-100 inline-block px-6 py-2 rounded-full shadow-sm mb-4">
             גרדו את הכרטיסים כדי לגלות את כל בני המשפחה!
         </p>
+        <div class="max-w-2xl mx-auto bg-white p-4 md:p-6 rounded-2xl shadow-md border-2 border-green-200 mt-2">
+            <p class="text-lg md:text-xl text-gray-700 font-semibold leading-relaxed">
+                <span class="text-green-600 font-extrabold">הוראות משחק:</span> יש לגרד את כל כרטיסי הגירוד ורק כאשר תגיעו לכרטיס גירוד של ה"אמא" אז גרדו את כולו על מנת לקבל קוד אותו תצטרכו להזין בעמוד הבא.
+            </p>
+        </div>
     </div>
 
     <!-- The grid where cards will be injected -->
@@ -121,6 +126,21 @@
     <button id="reset-btn" class="mt-10 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-colors text-xl border-4 border-green-700">
         התחל מחדש 🔄
     </button>
+
+    <!-- חלון קופץ (Modal) להצגת הקוד -->
+    <div id="success-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl text-center max-w-sm mx-4 border-4 border-green-400 transform transition-all">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-3xl font-extrabold text-green-600 mb-2">כל הכבוד, הצלחתם!</h2>
+            <p class="text-lg text-gray-600 mb-4">הקוד הוא:</p>
+            <div class="text-5xl font-black text-blue-600 bg-blue-50 py-4 px-8 rounded-2xl tracking-widest shadow-inner mb-8 border-2 border-blue-100">
+                3867
+            </div>
+            <button id="close-modal-btn" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105 text-xl">
+                המשך
+            </button>
+        </div>
+    </div>
 
     <script>
         const familyMembers = [
@@ -134,9 +154,13 @@
 
         const gameBoard = document.getElementById('game-board');
 
+        // משתנה שבודק אם כבר חשפנו את האמא במשחק הנוכחי
+        let momRevealed = false;
+
         // Function to setup the game
         function initGame() {
             gameBoard.innerHTML = ''; // Clear board
+            momRevealed = false; // איפוס במקרה של משחק חדש
             
             // Shuffle the array so they appear in a random order
             const shuffledMembers = [...familyMembers].sort(() => Math.random() - 0.5);
@@ -165,11 +189,11 @@
                 gameBoard.appendChild(cardWrap);
 
                 // 4. Initialize scratching logic for this canvas
-                setupCanvas(canvas, member.color);
+                setupCanvas(canvas, member.color, member.id);
             });
         }
 
-        function setupCanvas(canvas, accentColor) {
+        function setupCanvas(canvas, accentColor, memberId) {
             const ctx = canvas.getContext('2d');
             let isDrawing = false;
 
@@ -251,7 +275,33 @@
             }
 
             function stopDrawing() {
+                if (!isDrawing) return;
                 isDrawing = false;
+
+                // בדיקת אחוזי הגירוד במיוחד עבור כרטיס האמא
+                if (memberId === 'mom' && !momRevealed) {
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const pixels = imageData.data;
+                    let transparentCount = 0;
+                    
+                    // בודק את רמת השקיפות של הפיקסלים (כל ערך רביעי במערך הוא אלפא/שקיפות)
+                    for (let i = 3; i < pixels.length; i += 4) {
+                        if (pixels[i] < 50) { 
+                            transparentCount++;
+                        }
+                    }
+                    
+                    const totalPixels = pixels.length / 4;
+                    const percentScratched = (transparentCount / totalPixels) * 100;
+
+                    // אם יותר מ-60% מהכרטיס גורד, נציג את חלון ההצלחה
+                    if (percentScratched > 60) {
+                        momRevealed = true;
+                        setTimeout(() => {
+                            document.getElementById('success-modal').classList.remove('hidden');
+                        }, 400); // השהייה קלה לאפקט דרמטי
+                    }
+                }
             }
 
             // Mouse Events
@@ -270,6 +320,11 @@
 
         // Reset button functionality
         document.getElementById('reset-btn').addEventListener('click', initGame);
+
+        // כפתור סגירה של החלון הקופץ
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            document.getElementById('success-modal').classList.add('hidden');
+        });
 
     </script>
 </body>
